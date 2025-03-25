@@ -15,6 +15,7 @@
 #include "sleeplock.h"
 #include "file.h"
 #include "fcntl.h"
+#include "mutex.h"
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
@@ -102,6 +103,17 @@ sys_close(void)
 
   if(argfd(0, &fd, &f) < 0)
     return -1;
+
+  if (f->type == FD_MUTEX) {
+    struct mutex *m = f->mutex;
+    acquire(&m->lk);
+    if (m->owner != myproc()->pid) {
+        release(&m->lk);
+        return -1;
+    }
+    release(&m->lk);
+  }
+
   myproc()->ofile[fd] = 0;
   fileclose(f);
   return 0;
@@ -501,5 +513,66 @@ sys_pipe(void)
     fileclose(wf);
     return -1;
   }
+  return 0;
+}
+
+uint64
+sys_mutex(void)
+{
+  struct file *f = 0;
+  int fd;
+
+  if (mutexalloc(&f) < 0) return -1;
+
+  fd = fdalloc(f);
+  if (fd < 0) {
+    fileclose(f);
+    return -1;
+  }
+  return fd;
+}
+
+uint64
+sys_mutex_lock(void)
+{
+  int fd;
+  struct file *f;
+
+  if(argfd(0, &fd, &f) < 0) return -1;
+  if(f == 0 || f->type != FD_MUTEX) return -1;
+
+  struct mutex *m = f->mutex;
+
+  acquiresleep(&m->sl);
+  acquire(&m->lk);
+  if(m->owner != 0){
+    release(&m->lk);
+    releasesleep(&m->sl);
+    return -1;
+  }
+  m->owner = myproc()->pid;
+  release(&m->lk);
+  return 0;
+}
+
+uint64
+sys_mutex_unlock(void)
+{
+  int fd;
+  struct file *f;
+  
+  if(argfd(0, &fd, &f) < 0) return -1;
+  if (f == 0 || f->type != FD_MUTEX) return -1;
+
+  struct mutex *m = f->mutex;
+
+  acquire(&m->lk);
+  if(m->owner != myproc()->pid) {
+      release(&m->lk);
+      return -1;
+  }
+  m->owner = 0;
+  release(&m->lk);
+  releasesleep(&m->sl);
   return 0;
 }

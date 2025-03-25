@@ -9,6 +9,10 @@ struct sleeplock;
 struct stat;
 struct superblock;
 
+// debug
+void            enable_mutex_debug(int);
+int             is_mutex_debug_enabled(void);
+
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);
