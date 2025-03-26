@@ -1,6 +1,5 @@
 #include "kernel/types.h"
-#include "user/user.h"
-#include "kernel/fcntl.h"
+#include "user.h"
 
 void test_rw() {
     int mtx = mutex();
@@ -70,13 +69,18 @@ void test_unlock_foreign() {
     
     if (pid == 0) {
         printf("Test 4: unlock foreign... ");
-        if (mutex_unlock(mtx)) printf("[OK] unlock failed\n");
+        int rc = mutex_unlock(mtx);
+        if (rc < 0) printf("[OK] unlock failed\n"); 
         else printf("[FAIL] unlock succeeded\n");
         exit(0);
+    } else {
+        wait(0);
+        printf("Test 4: parent unlock check... ");
+        int rc = mutex_unlock(mtx);
+        if (rc == 0) printf("[OK] parent unlocked\n");
+        else printf("[FAIL] parent unlock error\n");
+        close(mtx);
     }
-    wait(0);
-    mutex_unlock(mtx);
-    close(mtx);
 }
 
 int main() {
