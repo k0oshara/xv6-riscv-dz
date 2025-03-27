@@ -715,7 +715,7 @@ ps_listinfo (struct procinfo *plist, int lim)
   for (p = proc; p < &proc[NPROC]; p++) {
     acquire(&p->lock);
 
-    if (p->state == UNUSED) {
+    if (p->state == UNUSED || p->state == USED) {
       release(&p->lock);
       continue;
     }
@@ -731,8 +731,12 @@ ps_listinfo (struct procinfo *plist, int lim)
 
     acquire(&wait_lock);
     if (p->parent) {
+      acquire(&p->parent->lock);
+
       pi.ppid = p->parent->pid;
       safestrcpy(pi.pname, p->parent->name, PROCNAME_LEN);
+      
+      release(&p->parent->lock);
     } else {
       pi.ppid = -1;
       pi.pname[0] = 0;
