@@ -45,6 +45,7 @@ mutexalloc(struct file **f)
   initsleeplock(&m->sl, "mutex sleep");
   initlock(&m->lk, "mutex internal");
   m->owner = 0;
+  m->ref = 1;
 
   fp->type = FD_MUTEX;
   fp->readable = 0;

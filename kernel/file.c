@@ -52,6 +52,12 @@ filedup(struct file *f)
   if(f->ref < 1)
     panic("filedup");
   f->ref++;
+  if (f->type == FD_MUTEX) {
+    struct mutex *m = f->mutex;
+    acquire(&m->lk);
+    m->ref++;
+    release(&m->lk);
+  }
   release(&ftable.lock);
   return f;
 }
@@ -66,6 +72,15 @@ fileclose(struct file *f)
   if(f->ref < 1)
     panic("fileclose");
   if(--f->ref > 0){
+    if (f->type == FD_MUTEX) {
+      struct mutex *m = f->mutex;
+      acquire(&m->lk);
+      if (m->owner == myproc()->pid) {
+        releasesleep(&m->sl);
+        m->owner = 0;
+      }
+      release(&m->lk);
+    }
     release(&ftable.lock);
     return;
   }
@@ -88,8 +103,13 @@ fileclose(struct file *f)
         m->owner = 0;
         releasesleep(&m->sl);
     }
-    release(&m->lk);
-    mutexclose(m);
+    m->ref--;
+    if (m->ref == 0) {
+      release(&m->lk);
+      mutexclose(m);
+    } else {
+      release(&m->lk);
+    }
   }
 }
 

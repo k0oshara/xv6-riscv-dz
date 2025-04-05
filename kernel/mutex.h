@@ -2,6 +2,7 @@ struct mutex {
   struct sleeplock sl;
   struct spinlock lk;
   int owner;
+  int ref;
 };
 
 int
