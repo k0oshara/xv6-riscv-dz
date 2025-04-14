@@ -92,11 +92,14 @@ sys_uptime(void)
   return xticks;
 }
 
+#define MASK_A (1 << 1)
+#define MASK_D 1
+
 static int 
 check_flags(pte_t pte, int flags) 
 {
   if (flags == 0) return 1;
-  int mask = (flags & 1 ? PTE_D : 0) | (flags & 2 ? PTE_A : 0);
+  int mask = (flags & MASK_A ? PTE_D : 0) | (flags & MASK_D ? PTE_A : 0);
   return (mask != 0) && ((pte & mask) == mask);
 }
 
@@ -156,7 +159,7 @@ sys_pginfo(void)
   argint(1, &len);
   argint(2, &flags);
   
-  if (flags < 0 || flags > 3)  return -1;
+  if (flags & ~(MASK_A | MASK_D))  return -1;
   if ((buf != 0 || len != 0) && validate_buffer(buf, len, p) < 0) return -1;
 
   printf("PAGETABLE 0x%lx\n", (uint64)p->pagetable - KERNBASE);
@@ -213,8 +216,8 @@ clear_pagetable(pagetable_t pagetable, int lvl, int flags)
 
     if (pte & PTE_U) {
       pte_t new_pte = pte;
-      if (flags & 1) new_pte &= ~PTE_D;
-      if (flags & 2) new_pte &= ~PTE_A;
+      if (flags & MASK_D) new_pte &= ~PTE_D;
+      if (flags & MASK_A) new_pte &= ~PTE_A;
       pagetable[i] = new_pte;
     }
 
@@ -235,7 +238,7 @@ sys_pgclear(void)
   argint(1, &len);
   argint(2, &flags);
   
-  if (flags < 0 || flags > 3) return -1;
+  if (flags & ~(MASK_A | MASK_D)) return -1;
   if (buf == 0 && len != 0) return -1;
   if ((buf != 0 || len != 0) && validate_buffer(buf, len, p) < 0) return -1;
 
@@ -248,8 +251,8 @@ sys_pgclear(void)
     for (uint64 va = start; va < end; va += PGSIZE) {
       pte_t *pte = walk(p->pagetable, va, 0);
       if (pte && (*pte & PTE_V) && (*pte & PTE_U)) {
-        if (flags & 1) *pte &= ~PTE_D;
-        if (flags & 2) *pte &= ~PTE_A;
+        if (flags & MASK_D) *pte &= ~PTE_D;
+        if (flags & MASK_A) *pte &= ~PTE_A;
       }
     }
   }
