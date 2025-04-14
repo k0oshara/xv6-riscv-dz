@@ -7,6 +7,14 @@
 #include "proc.h"
 
 uint64
+sys_debug_mutex(void) {
+  int enable;
+  argint(0, &enable);
+  enable_mutex_debug(enable);
+  return 0;
+}
+
+uint64
 sys_exit(void)
 {
   int n;
