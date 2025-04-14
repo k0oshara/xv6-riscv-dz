@@ -22,6 +22,8 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int pginfo(void* buf, int len, int flags);
+int pgclear(void* buf, int len, int flags);
 
 // ulib.c
 int stat(const char*, struct stat*);
