@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "procinfo.h"
 
 struct cpu cpus[NCPU];
 
@@ -692,4 +693,63 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+int
+ps_listinfo (struct procinfo *plist, int lim)
+{
+  struct proc *p;
+  struct procinfo pi;
+  int nprocs = 0;
+
+  if (plist == 0) {
+    for (p = proc; p < &proc[NPROC]; p++) {
+      acquire(&p->lock);
+      if (p->state != UNUSED)
+        nprocs++;
+      release(&p->lock);
+    }
+    return nprocs;
+  }
+
+  for (p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+
+    if (p->state == UNUSED || p->state == USED) {
+      release(&p->lock);
+      continue;
+    }
+
+    if (nprocs >= lim) {
+      release(&p->lock);
+      return -1;
+    }
+
+    pi.pid = p->pid;
+    pi.state = p->state;
+    safestrcpy(pi.name, p->name, PROCNAME_LEN);
+
+    acquire(&wait_lock);
+    if (p->parent) {
+      acquire(&p->parent->lock);
+
+      pi.ppid = p->parent->pid;
+      safestrcpy(pi.pname, p->parent->name, PROCNAME_LEN);
+      
+      release(&p->parent->lock);
+    } else {
+      pi.ppid = -1;
+      pi.pname[0] = 0;
+    }
+    release(&wait_lock);
+
+    release(&p->lock);
+
+    if (copyout(myproc()->pagetable, (uint64)&plist[nprocs], (char*)&pi, sizeof(pi)) < 0)
+      return -2;
+
+    nprocs++;
+  }
+
+  return nprocs;
 }
