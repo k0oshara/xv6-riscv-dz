@@ -5,6 +5,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "rtc.h"
 
 uint64
 sys_exit(void)
@@ -90,4 +91,10 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+uint64
+sys_gettime(void)
+{
+  return rtc_get_time();
 }
