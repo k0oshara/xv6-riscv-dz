@@ -12,14 +12,20 @@ static uint urandom_seed = 1;
 static struct spinlock nullstat_lock;
 static uint64 nullstat_bytes = 0;
 
+#define ZERO_BUF_SIZE 4096
+static char zero_buf[ZERO_BUF_SIZE] = {0};
+#define min(a, b) ((a) < (b) ? (a) : (b))
 
 static int zero_read(uint64 dst, int n) {
-  char zero = 0;
-  for (int i = 0; i < n; i++) {
-    if (either_copyout(1, dst + i, &zero, 1) < 0) return -1;
+  int total = 0;
+  while (total < n) {
+    int ch = min(n - total, ZERO_BUF_SIZE);
+    if (either_copyout(1, dst + total, zero_buf, ch) < 0) return -1;
+    total += ch;
   }
-  return n;
+  return total;
 }
+
 static int urandom_read(uint64 dst, int n) {
   acquire(&urandom_lock);
   for (int i = 0; i < n; i++) {
