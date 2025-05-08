@@ -20,6 +20,17 @@ main(void)
     mknod("console", CONSOLE, 0);
     open("console", O_RDWR);
   }
+
+  if(mkdir("/dev") < 0) {
+    fprintf(2, "init: mkdir /dev failed\n");
+    exit(1);
+  }
+
+  mknod("/dev/null", PSEUDO_MAJOR, NULL_MINOR);
+  mknod("/dev/zero", PSEUDO_MAJOR, ZERO_MINOR);
+  mknod("/dev/urandom", PSEUDO_MAJOR, URANDOM_MINOR);
+  mknod("/dev/nullstat", PSEUDO_MAJOR, NULLSTAT_MINOR);
+
   dup(0);  // stdout
   dup(0);  // stderr
 
